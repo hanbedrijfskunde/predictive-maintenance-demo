@@ -275,19 +275,19 @@
         // --- DATA ---
         let machines = [
             { 
-                id: 'OFF-XL-01', name: 'Offsetdruk XL-75', type: 'Offset Printing', serial: 'OS-2025-001', health: 100, rul: 210, temp: 36, vibe: 0.1, history: [], status: 'ok', prevStatus: 'ok', drift: 0.4,
+                id: 'OFF-XL-01', name: 'Offsetdruk XL-75', type: 'Offset Printing', serial: 'OS-2025-001', health: 100, rul: 210, temp: 36, vibe: 0.1, history: [], status: 'ok', prevStatus: 'ok', drift: 0.15,
                 diagnose: [{ cause: 'Normale wals-slijtage', confidence: 99 }],
                 parts: ['Walsen-set B1', 'Vochtfilter G2'],
                 hotspotLabel: 'Wals Unit'
             },
             { 
-                id: 'INK-JET-X2', name: 'Digital Inkjet Pro 8', type: 'Digital Inkjet', serial: 'DI-2024-992', health: 100, rul: 34, temp: 38, vibe: 0.15, history: [], status: 'ok', prevStatus: 'ok', drift: 0.8,
+                id: 'INK-JET-X2', name: 'Digital Inkjet Pro 8', type: 'Digital Inkjet', serial: 'DI-2024-992', health: 100, rul: 34, temp: 38, vibe: 0.15, history: [], status: 'ok', prevStatus: 'ok', drift: 0.35,
                 diagnose: [{ cause: 'Nozzle verstopping Unit 4', confidence: 88 }, { cause: 'Inkt-toevoer drukval', confidence: 45 }],
                 parts: ['Printkop PH-800', 'Inktfilter Micro'],
                 hotspotLabel: 'Nozzle Matrix'
             },
             { 
-                id: 'PACK-CUT-09', name: 'Vouw/Stans Combo 9', type: 'Packaging Production', serial: 'PC-2023-884', health: 100, rul: 120, temp: 42, vibe: 0.2, history: [], status: 'ok', prevStatus: 'ok', drift: 3.5,
+                id: 'PACK-CUT-09', name: 'Vouw/Stans Combo 9', type: 'Packaging Production', serial: 'PC-2023-884', health: 100, rul: 120, temp: 42, vibe: 0.2, history: [], status: 'ok', prevStatus: 'ok', drift: 1.2,
                 diagnose: [{ cause: 'Stansmes bot (Groep A)', confidence: 94 }, { cause: 'Aandrijfriem frictie', confidence: 72 }],
                 parts: ['Stansmes-set 40mm', 'Aandrijfriem XL-Belt'],
                 hotspotLabel: 'Stans Unit'
@@ -318,39 +318,41 @@
             machines.forEach(m => {
                 const noise = (Math.random() - 0.5) * 2;
                 
-                // Incident kans verhoogd
+                // Incident kans verlaagd naar 2% per update (voorheen ~6%)
                 let incidentJump = 0;
-                if (Math.random() > 0.94) { 
-                    incidentJump = Math.random() * 1.5 * m.drift;
-                    addAlert(m.id, `AI-Melding: Plotse piek in ${Math.random() > 0.5 ? 'vibratie' : 'temperatuur'} geanalyseerd.`);
-                    m.health -= (3 + Math.random() * 5); 
+                if (Math.random() > 0.98) { 
+                    incidentJump = Math.random() * 1.2 * m.drift;
+                    addAlert(m.id, `AI-Analyse: Subtiele afwijking in ${Math.random() > 0.5 ? 'vibratiepatroon' : 'thermische balans'} gedetecteerd.`);
+                    // Incident heeft nu minder directe impact op health
+                    m.health -= (1 + Math.random() * 2); 
                 }
 
-                m.vibe += (Math.random() * 0.08 * m.drift) + (incidentJump * 0.2);
-                m.temp += (Math.random() * 0.2 * m.drift) + (incidentJump * 0.8);
+                // Natuurlijke achteruitgang (drifts zijn ook verlaagd voor tragere degradatie)
+                m.vibe += (Math.random() * 0.04 * m.drift) + (incidentJump * 0.15);
+                m.temp += (Math.random() * 0.1 * m.drift) + (incidentJump * 0.6);
                 
-                let healthImpact = (m.vibe * 30) + (m.temp / 8);
+                let healthImpact = (m.vibe * 20) + (m.temp / 10);
                 m.health = Math.max(0, Math.min(m.health, 100 - healthImpact));
-                m.rul = Math.max(0, Math.round(m.health * 1.6));
+                m.rul = Math.max(0, Math.round(m.health * 1.8));
                 
                 // Status bepaling
                 const oldStatus = m.status;
                 m.status = m.health > 85 ? 'ok' : m.health > 45 ? 'warning' : 'danger';
                 
-                // LOGICA: Als status verandert, MOET er een log komen
+                // Status Transition Listener
                 if (oldStatus !== m.status) {
                     if (m.status === 'warning') {
-                        addAlert(m.id, `Statuswijziging: Machine verlaat optimale parameters. Voorspeld defect in ${m.rul} dagen.`);
+                        addAlert(m.id, `Waarschuwing: Conditie onder drempelwaarde. Serviceplanning geadviseerd.`);
                     } else if (m.status === 'danger') {
-                        addAlert(m.id, `KRITIEK: Kritieke drempel overschreden. Onmiddellijke service vereist.`);
+                        addAlert(m.id, `KRITIEK: Onmiddellijke actie vereist om stilstand te voorkomen.`);
                     } else if (m.status === 'ok') {
-                        addAlert(m.id, `Systeem hersteld naar optimale conditie.`);
+                        addAlert(m.id, `Status hersteld naar optimaal.`);
                     }
                 }
 
                 m.history.push({ 
                     time: new Date().toLocaleTimeString(), 
-                    vibe: m.vibe + (noise * 0.1), 
+                    vibe: m.vibe + (noise * 0.05), 
                     temp: m.temp + noise 
                 });
                 if (m.history.length > 20) m.history.shift();
@@ -420,7 +422,7 @@
                 recDesc.innerText = "Systeem draait binnen de parameters. Geen actie nodig.";
                 btnContainer.innerHTML = '';
             } else {
-                recDesc.innerText = m.status === 'warning' ? "AI detecteert verslechtering in de " + m.hotspotLabel + ". Preventieve planning geadviseerd." : "KRITIEK: Interventie vereist in de " + m.hotspotLabel + ". Onmiddellijk handelen.";
+                recDesc.innerText = m.status === 'warning' ? "AI detecteert degradatie in de " + m.hotspotLabel + ". Preventieve planning geadviseerd." : "KRITIEK: Direct handelen vereist in de " + m.hotspotLabel + ". Stilstand dreigt.";
                 btnContainer.innerHTML = `<button onclick="openServiceModal('${m.id}')" class="bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/20">Plan Service</button>`;
             }
         }
@@ -467,7 +469,7 @@
                 }
             });
 
-            document.getElementById('modal-parts-stock').innerHTML = stockHtml || '<p class="text-[10px] text-slate-500 italic">Geen specifieke voorraad.</p>';
+            document.getElementById('modal-parts-stock').innerHTML = stockHtml || '<p class="text-[10px] text-slate-500 italic">Geen lokale voorraad.</p>';
             document.getElementById('modal-parts-order').innerHTML = orderHtml || '<p class="text-[10px] text-slate-500 italic">Geen externe bestelling nodig.</p>';
             document.getElementById('service-modal').classList.remove('hidden');
         }
@@ -477,11 +479,11 @@
         }
 
         function confirmService() {
-            addAlert(selectedId, `Service succesvol ingepland: Monteur en onderdelen gereserveerd.`);
+            addAlert(selectedId, `Service succesvol ingepland: Planning bevestigd.`);
             closeServiceModal();
             const m = machines.find(x => x.id === selectedId);
-            m.vibe = 0.05 + Math.random() * 0.1;
-            m.temp = 32 + Math.random() * 5;
+            m.vibe = 0.05 + Math.random() * 0.05;
+            m.temp = 32 + Math.random() * 4;
             m.health = 100;
             m.status = 'ok';
         }
@@ -503,7 +505,7 @@
         function resetSimulation() {
             machines.forEach(m => {
                 m.vibe = 0.08;
-                m.temp = 34 + Math.random() * 3;
+                m.temp = 34 + Math.random() * 2;
                 m.history = [];
                 m.health = 100;
                 m.status = 'ok';
